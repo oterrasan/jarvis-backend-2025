@@ -17,7 +17,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-aapp.use(cors({
+app.use(cors({
   origin: ['https://jarvis-crm-2025.vercel.app', /vercel\.app$/],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
