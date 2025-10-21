@@ -16,16 +16,20 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// CORS - ACEITAR TUDO
 app.use(cors({
-  origin: ['https://jarvis-crm-2025.vercel.app', /vercel\.app$/],
+  origin: '*',
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(requestLogger);
+
+// Handle preflight
+app.options('*', cors());
 
 // Health check
 app.get('/health', (req, res) => {
@@ -52,7 +56,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// Rotas da API
+// Rotas
 app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/proposals', proposalRoutes);
@@ -62,47 +66,19 @@ app.use('/api/dashboard', dashboardRoutes);
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
-    error: 'Not found',
-    path: req.path
+    error: 'Endpoint não encontrado',
+    path: req.path,
+    method: req.method
   });
 });
 
-// Error handler (deve ser o último middleware)
+// Error handler
 app.use(errorHandler);
 
 // Iniciar servidor
 app.listen(PORT, () => {
-  console.log(`
-╔══════════════════════════════════════════════════════╗
-║                                                      ║
-║   🦁 JARVIS CRM API                                  ║
-║                                                      ║
-║   Status: ✅ RUNNING                                 ║
-║   Port: ${PORT}                                        ║
-║   Environment: ${process.env.NODE_ENV || 'development'}                        ║
-║   Time: ${new Date().toLocaleString()}               ║
-║                                                      ║
-║   Endpoints:                                         ║
-║   • POST   /api/auth/register                        ║
-║   • POST   /api/auth/login                           ║
-║   • GET    /api/clients                              ║
-║   • POST   /api/clients                              ║
-║   • GET    /api/proposals                            ║
-║   • GET    /api/dashboard                            ║
-║                                                      ║
-║   Roberto, seu CRM está NO AR! 🚀                   ║
-║                                                      ║
-╚══════════════════════════════════════════════════════╝
-  `);
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully...');
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
-  });
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📡 Health check: http://localhost:${PORT}/health`);
 });
 
 export default app;
