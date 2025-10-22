@@ -1,84 +1,96 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import { errorHandler, requestLogger } from './src/middleware/validation.js';
+requer('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const capacete = require('capacete');
+const rateLimit = require('express-rate-limit');
 
-// Importar rotas
-import authRoutes from './src/routes/auth.js';
-import clientRoutes from './src/routes/clients.js';
-import proposalRoutes from './src/routes/proposals.js';
-import followupRoutes from './src/routes/followups.js';
-import dashboardRoutes from './src/routes/dashboard.js';
-
-// Configuração
-dotenv.config();
+const authRoutes = require('./src/routes/auth');
+const clientRoutes = require('./src/routes/clients');
+const proposalRoutes = require('./src/routes/proposals');
+const followupRoutes = require('./src/routes/followups');
+const dashboardRoutes = require('./src/routes/dashboard');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORTA = process.env.PORTA || 5000;
 
-// CORS - ACEITAR TUDO
-app.use(cors({
-  origin: '*',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+// CORS - Aceita Vercel e localhost
+aplicativo.use(cors({
+  origem: função (origem, retorno de chamada) {
+    const allowedOrigins = [
+      'https://jarvis-crm-2025.vercel.app',
+      'https://jarvis-crm-2025-git-main-oterrasan.vercel.app',
+      /\.vercel\.app$/,
+      'http://localhost:3000'
+    ];
+    
+    se (!origem || allowedOrigins.some(permitido =>
+      typeof permitido === 'string' ? permitido === origem : permitido.teste(origem)
+    )) {
+      retorno de chamada(nulo, verdadeiro);
+    } outro {
+      retorno de chamada(nulo, verdadeiro); // Permitir todos em produção
+    }
+  },
+  credenciais: verdadeiro,
+  métodos: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Tipo de conteúdo', 'Autorização']
 }));
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(requestLogger);
+// Middleware de segurança
+app.use(capacete({
+  crossOriginResourcePolicy: { política: "origem cruzada" }
+}));
 
-// Handle preflight
-app.options('*', cors());
+// Limitação de taxa
+const limitador = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  máx.: 100 // limite por IP
+});
+app.use('/api/auth', limitador);
 
-// Health check
-app.get('/health', (req, res) => {
+// Analisador de corpo
+aplicativo.use(express.json());
+app.use(express.urlencoded({extended: true}));
+
+// Verificação de saúde
+app.get('/saúde', (req, res) => {
   res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    estado: 'saudável',
+    carimbo de data/hora: nova Data().toISOString(),
+    tempo de atividade: process.uptime(),
+    ambiente: process.env.NODE_ENV || 'produção'
   });
 });
 
-// API Info
-app.get('/', (req, res) => {
-  res.json({
-    name: 'Jarvis CRM API',
-    version: '1.0.0',
-    status: 'running',
-    endpoints: {
-      auth: '/api/auth',
-      clients: '/api/clients',
-      proposals: '/api/proposals',
-      followups: '/api/followups',
-      dashboard: '/api/dashboard'
-    }
-  });
-});
-
-// Rotas
-app.use('/api/auth', authRoutes);
-app.use('/api/clients', clientRoutes);
+// Rotas principais
+aplicativo.use('/api/auth', authRoutes);
+app.use('/api/clientes', clientRoutes);
 app.use('/api/proposals', proposalRoutes);
 app.use('/api/followups', followupRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
-// 404 handler
-app.use((req, res) => {
+// Rota 404
+app.use('*', (req, res) => {
   res.status(404).json({
-    error: 'Endpoint não encontrado',
-    path: req.path,
-    method: req.method
+    erro: 'Endpoint não encontrado',
+    caminho: req.originalUrl
   });
 });
 
-// Error handler
-app.use(errorHandler);
-
-// Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📡 Health check: http://localhost:${PORT}/health`);
+// Manipulador de erros
+app.use((err, req, res, próximo) => {
+  console.error('Erro:', err);
+  res.status(err.status || 500).json({
+    erro: err.mensagem || 'Erro interno do servidor',
+    ...(process.env.NODE_ENV === 'desenvolvimento' && { pilha: err.stack })
+  });
 });
 
-export default app;
+// Iniciar servidor
+app.listen(PORTA, '0.0.0.0', () => {
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`🔗 Ambiente: ${process.env.NODE_ENV || 'produção'}`);
+  console.log(`📊 Banco de dados: ${process.env.DATABASE_URL ? 'Conectado' : 'Não configurado'}`);
+});
+
+módulo.exports = aplicativo;
